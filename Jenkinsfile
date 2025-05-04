@@ -2,12 +2,6 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
-            steps {
-                git url: 'https://github.com/hnnayy/sast-demo-app.git', branch: 'master'
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 sh 'pip install bandit'
