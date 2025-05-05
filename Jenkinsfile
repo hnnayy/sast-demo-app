@@ -1,33 +1,44 @@
 pipeline {
     agent any
+
     stages {
-        stage('Install Dependencies') {
+        stage('Checkout') {
             steps {
-                sh 'pip install bandit'
+                git url: 'https://github.com/maruwrks/sast-demo-app.git', branch: 'master'
             }
         }
+
+        stage('Setup Virtual Environment') {
+            steps {
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install bandit
+                '''
+            }
+        }
+
         stage('SAST Analysis') {
             steps {
-                // Gunakan try-catch untuk menjalankan bandit
-                script {
-                    try {
-                        sh 'bandit -f xml -o bandit-output.xml -r .'
-                    } catch (Exception e) {
-                        echo "Bandit found security issues, but we'll continue the pipeline"
-                    }
-                }
-                
-                // Gunakan warnings-ng plugin dengan konfigurasi yang benar
-                recordIssues enabledForFailure: true, 
-                            aggregatingResults: true, 
-                            tools: [bandit(pattern: 'bandit-output.xml')]
+                sh '''
+                    . venv/bin/activate
+                    bandit -f xml -o bandit-output.xml -r . || true
+                '''
+                recordIssues(
+                    tool: issues(name: 'Bandit', pattern: 'bandit-output.xml', reportEncoding: 'UTF-8')
+                )
+                archiveArtifacts artifacts: 'bandit-output.xml', fingerprint: true
             }
         }
     }
+
     post {
         always {
-            // Arsipkan hasil bandit untuk referensi
-            archiveArtifacts artifacts: 'bandit-output.xml', allowEmptyArchive: true
+            echo 'Pipeline finished.'
+        }
+        failure {
+            echo 'Pipeline failed.'
         }
     }
 }
