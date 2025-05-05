@@ -8,26 +8,19 @@ pipeline {
         }
         stage('SAST Analysis') {
             steps {
-                // Gunakan try-catch untuk menjalankan bandit
-                script {
-                    try {
-                        sh 'bandit -f xml -o bandit-output.xml -r .'
-                    } catch (Exception e) {
-                        echo "Bandit found security issues, but we'll continue the pipeline"
-                    }
-                }
-                
-                // Gunakan warnings-ng plugin dengan konfigurasi yang benar
-                recordIssues enabledForFailure: true, 
-                            aggregatingResults: true, 
-                            tools: [bandit(pattern: 'bandit-output.xml')]
+                // Generate laporan Bandit dalam bentuk HTML
+                sh 'bandit -f html -o bandit-report.html -r . || true'
+
+                // Tampilkan hasil HTML di dashboard Jenkins
+                publishHTML([
+                    reportName: 'Bandit Report',
+                    reportDir: '.',
+                    reportFiles: 'bandit-report.html',
+                    allowMissing: true,
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true
+                ])
             }
-        }
-    }
-    post {
-        always {
-            // Arsipkan hasil bandit untuk referensi
-            archiveArtifacts artifacts: 'bandit-output.xml', allowEmptyArchive: true
         }
     }
 }
