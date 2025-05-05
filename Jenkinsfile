@@ -8,14 +8,19 @@ pipeline {
         }
         stage('SAST Analysis') {
             steps {
-                sh 'bandit -f xml -o bandit-output.xml -r . || true'
-                recordIssues enabledForFailure: true, tools: [bandit(pattern: 'bandit-output.xml')]
+                // Generate HTML report
+                sh 'bandit -f html -o bandit-output.html -r . || true'
+                
+                // Publish HTML
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: '.',
+                    reportFiles: 'bandit-output.html',
+                    reportName: 'Bandit Security Report'
+                ])
             }
-        }
-    }
-    post {
-        always {
-            junit allowEmptyResults: true, testResults: 'bandit-output.xml'
         }
     }
 }
