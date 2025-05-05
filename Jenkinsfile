@@ -8,19 +8,26 @@ pipeline {
         }
         stage('SAST Analysis') {
             steps {
-                // Generate HTML report
-                sh 'bandit -f html -o bandit-output.html -r . || true'
+                // Gunakan try-catch untuk menjalankan bandit
+                script {
+                    try {
+                        sh 'bandit -f xml -o bandit-output.xml -r .'
+                    } catch (Exception e) {
+                        echo "Bandit found security issues, but we'll continue the pipeline"
+                    }
+                }
                 
-                // Publish HTML
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: '.',
-                    reportFiles: 'bandit-output.html',
-                    reportName: 'Bandit Security Report'
-                ])
+                // Gunakan warnings-ng plugin dengan konfigurasi yang benar
+                recordIssues enabledForFailure: true, 
+                            aggregatingResults: true, 
+                            tools: [bandit(pattern: 'bandit-output.xml')]
             }
+        }
+    }
+    post {
+        always {
+            // Arsipkan hasil bandit untuk referensi
+            archiveArtifacts artifacts: 'bandit-output.xml', allowEmptyArchive: true
         }
     }
 }
